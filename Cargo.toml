@@ -1,7 +1,11 @@
 [package]
 name = "dailymotion"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+description = "[IN HEAVY DEVELOPMENT] API wrapper for Dailymotion."
+license = "Unlicense"
+homepage = "https://github.com/Breadinator/dailymotion"
+repository = "https://github.com/Breadinator/dailymotion"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
