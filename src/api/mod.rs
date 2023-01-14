@@ -38,9 +38,10 @@ impl<P: EndpointParams, R: DeserializeOwned> Endpoint<P, R> {
         url.push_str(&params.build_url(self));
 
         let client = reqwest::blocking::Client::new();
-        self.request_method.builder(&client, &url)
+        let text: &str = &self.request_method.builder(&client, &url)
             .send()?
-            .json()
+            .text()?;
+        serde_json::from_str(text)
             .map_err(std::convert::Into::into)
     }
 }
@@ -120,5 +121,9 @@ impl Reqwester for reqwest::blocking::Client {
     fn delete(&self, url: impl IntoUrl) -> Self::RequestBuilder {
         self.delete(url)
     }
+}
+
+pub trait Fielder {
+    fn generate_fields_string(&self) -> String;
 }
 

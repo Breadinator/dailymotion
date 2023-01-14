@@ -14,8 +14,4 @@ mod env;
 pub use env::EnvironmentVariable;
 
 mod err;
-pub use err::{
-    Error,
-    Result,
-};
-
+pub use err::{Error, Result};
