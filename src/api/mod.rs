@@ -1,39 +1,44 @@
-use std::marker::PhantomData;
+use std::{
+    marker::PhantomData,
+    fmt::Display,
+};
 use crate::{
     Result,
     Scope,
 };
 use reqwest::IntoUrl;
 use serde::de::DeserializeOwned;
+use phf::Map;
 
 pub mod video;
 
 pub const API_URL: &str = "https://api.dailymotion.com";
 
 /// Generic type, `P`, is the type of parameters to pass.
-pub struct Endpoint<P: EndpointParams, R: DeserializeOwned> {
+pub struct Endpoint<P: EndpointParams, R: DeserializeOwned, F: 'static>
+where
+    Vec<F>: Fielder,
+{
     // request info
     pub url: &'static str,
     pub request_method: HttpRequestMethod,
 
     // auth
-    pub requires_authentication: bool,
-    pub required_scopes: &'static [Scope],
+    pub required_scopes: Map<F, &'static [Scope]>,
 
     // phantom data
     pub phantom: (PhantomData<P>, PhantomData<R>),
 }
 
-impl<P: EndpointParams, R: DeserializeOwned> Endpoint<P, R> {
+impl<P: EndpointParams, R: DeserializeOwned, F> Endpoint<P, R, F>
+    where
+        Vec<F>: Fielder
+{
     /// Makes a request
     ///
     /// # Errors
     /// * [`crate::Error::ReqwestError`]
-    pub fn call(&self, params: &P) -> Result<R>{
-        if self.requires_authentication {
-            unimplemented!();
-        }
-
+    pub fn call(&self, params: &P) -> Result<R> {
         let mut url = String::from(API_URL);
         url.push_str(&params.build_url(self));
 
@@ -48,11 +53,10 @@ impl<P: EndpointParams, R: DeserializeOwned> Endpoint<P, R> {
 
 #[macro_export]
 macro_rules! endpoint {
-    ($url:expr, $request_method:expr, $requires_authentication:expr, $required_scopes:expr) => {
+    ($url:expr, $request_method:expr, $required_scopes:expr $(,)?) => {
         Endpoint {
             url: $url,
             request_method: $request_method,
-            requires_authentication: $requires_authentication,
             required_scopes: $required_scopes,
             phantom: (std::marker::PhantomData, std::marker::PhantomData),
         }
@@ -62,7 +66,9 @@ macro_rules! endpoint {
 pub trait EndpointParams {
     /// Builds the full endpoint URL component.
     /// E.g., for [`video::GET_FROM_ID`], "/video/{}" -> "/video/x8gkpx9" if the given id is "x8gkpx9".
-    fn build_url<P: EndpointParams, R: DeserializeOwned>(&self, endpoint: &Endpoint<P, R>) -> String;
+    fn build_url<P: EndpointParams, R: DeserializeOwned, F>(&self, endpoint: &Endpoint<P, R, F>) -> String
+    where
+        Vec<F>: Fielder;
 }
 
 pub enum HttpRequestMethod {
@@ -126,4 +132,26 @@ impl Reqwester for reqwest::blocking::Client {
 pub trait Fielder {
     fn generate_fields_string(&self) -> String;
 }
+
+impl<F: Display> Fielder for Vec<F> {
+    fn generate_fields_string(&self) -> String {
+        let mut fields = String::new();
+
+        if self.is_empty() {
+            return fields;
+        }
+
+        fields.push_str("fields=");
+        fields.push_str(
+            &self
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<String>>()
+                .join("%2C"),
+        );
+
+        fields
+    }
+}
+
 

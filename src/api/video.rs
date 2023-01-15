@@ -1,20 +1,24 @@
+use std::collections::HashMap;
 use crate::{
     api::{Endpoint, EndpointParams, Fielder, HttpRequestMethod},
     endpoint,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::collections::HashMap;
 use strum_macros::{Display, EnumString};
 use chrono::{
     Utc,
     DateTime,
 };
 use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
+use phf::phf_map;
 
 // pub static GET: Endpoint<()> = endpoint!("/videos", HttpRequestMethod::Get, false, &[]);
 
-pub static GET_FROM_ID: Endpoint<GetFromIdParams, GetFromIdResponse> =
-    endpoint!("/video/{id}", HttpRequestMethod::Get, false, &[]);
+pub static GET_FROM_ID: Endpoint<GetFromIdParams, GetFromIdResponse, VideoField> = endpoint!(
+    "/video/{id}",
+    HttpRequestMethod::Get,
+    phf_map! {}
+);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFromIdParams {
@@ -23,10 +27,13 @@ pub struct GetFromIdParams {
 }
 
 impl EndpointParams for GetFromIdParams {
-    fn build_url<T: EndpointParams, P: DeserializeOwned>(
+    fn build_url<T: EndpointParams, P: DeserializeOwned, F>(
         &self,
-        endpoint: &Endpoint<T, P>,
-    ) -> String {
+        endpoint: &Endpoint<T, P, F>,
+    ) -> String
+    where
+        Vec<F>: Fielder
+    {
         let mut url = endpoint.url.to_owned().replace("{id}", &self.id);
 
         if let Some(fields) = &self.fields {
@@ -173,7 +180,7 @@ pub struct GetFromIdResponse {
 }
 
 #[allow(clippy::module_name_repetitions, non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq, EnumString, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumString, Display, Hash)]
 pub enum VideoField {
     advertising_custom_target,
     advertising_instream_blocked,
@@ -292,26 +299,5 @@ pub enum VideoField {
     views_last_week,
     views_total,
     width,
-}
-
-impl Fielder for Vec<VideoField> {
-    fn generate_fields_string(&self) -> String {
-        let mut fields = String::new();
-
-        if self.is_empty() {
-            return fields;
-        }
-
-        fields.push_str("fields=");
-        fields.push_str(
-            &self
-                .iter()
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<String>>()
-                .join("%2C"),
-        );
-
-        fields
-    }
 }
 

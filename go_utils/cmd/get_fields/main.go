@@ -125,7 +125,7 @@ func build_rust_enum(fields []field, pub bool) string {
 
 	// and this one is for the enum field
 	output += "#[allow(clippy::module_name_repetitions, non_camel_case_types)]\n"
-	output += "#[derive(Debug, Clone, PartialEq, Eq, EnumString, Display)]\n"
+	output += "#[derive(Debug, Clone, PartialEq, Eq, EnumString, Display, Hash)]\n"
 	if pub {
 		output += "pub "
 	}
